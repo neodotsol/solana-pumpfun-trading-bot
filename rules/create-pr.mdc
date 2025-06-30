@@ -1,5 +1,58 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Creating Pull Requests (PRs)
+
+Follow these guidelines to ensure your pull requests are clear, actionable, and easy to review:
+
+1. **Write a Clear Title**
+   - Summarize the change in a concise, descriptive way.
+   - Use imperative mood (e.g., "Add new login endpoint").
+
+2. **Provide a Detailed Description**
+   - Explain the motivation and context for the change.
+   - List what was changed, added, or fixed.
+   - Reference related issues or discussions (e.g., "Closes #42").
+
+3. **Keep PRs Focused**
+   - Limit each PR to a single purpose or concern.
+   - Avoid mixing unrelated changes.
+
+4. **Include Testing Instructions**
+   - Describe how reviewers can test the changes.
+   - List any manual steps or commands required.
+
+5. **Add Screenshots or Demos (if applicable)**
+   - Visual changes should include before/after screenshots or demo videos.
+
+6. **Request Reviewers and Assign Labels**
+   - Tag relevant reviewers and apply appropriate labels (e.g., bug, enhancement).
+
+7. **Update Documentation**
+   - Update README, docs, or comments if your change affects usage or APIs.
+
+8. **Check CI and Resolve Conflicts**
+   - Ensure all checks pass before requesting review.
+   - Resolve merge conflicts promptly.
+
+## Example PR Description
+
+```
+### Summary
+Adds user authentication to the login endpoint.
+
+### Motivation
+Improves security by requiring users to authenticate before accessing protected resources.
+
+### Changes
+- Added JWT-based authentication middleware
+- Updated login route
+- Added tests for authentication
+
+### Testing
+1. Run `npm test`
+2. Try logging in with valid/invalid credentials
+
+Closes #42
