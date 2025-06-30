@@ -7,6 +7,7 @@ This project serves as a central place to document and refine the rules, convent
 
 ## Included Files
 - [`commit.mdc`](rules/commit.mdc): Commit message conventions and best practices.
+- [`create-pr.mdc`](rules/create-pr.mdc): Rules for creating pull requests.
 - [`cursor-rules.mdc`](rules/cursor-rules.mdc): Guidelines for using the Cursor editor with agents.
 - [`self-improvement.mdc`](rules/self-improvement.mdc): Rules and reflections for improving agent performance and personal workflows.
 
