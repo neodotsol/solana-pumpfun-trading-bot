@@ -28,7 +28,7 @@ fi
 echo -e "${YELLOW}Fetching available rules...${NC}"
 
 # Use GitHub API to get the list of files in the rules directory
-RULES_JSON=$(curl -s "https://api.github.com/repos/grdsdev/agent-rules/contents/rules" | grep -o '"path":"[^"]*\.mdc"' | sed 's/"path":"//g' | sed 's/"//g')
+RULES_JSON=$(curl -s "https://api.github.com/repos/grdsdev/agent-rules/contents/rules" | grep -o '"path": *"[^"]*\.mdc"' | sed 's/"path": *"//g' | sed 's/"$//g')
 
 if [ -z "$RULES_JSON" ]; then
     echo -e "${RED}✗ Failed to fetch rules list from repository${NC}"
