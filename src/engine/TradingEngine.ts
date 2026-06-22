@@ -5,6 +5,7 @@ import { Logger } from '../utils/logger';
 import { hasSomeoneBought, hasSomeoneSold } from '../monitor/MarketMonitor';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { calculateWithSlippageBuy } from '../pumpfun/util';
+import Big from 'ts-arithmetic-helper';
 
 /**
  * Sleep utility
@@ -52,7 +53,8 @@ async function executeBuyWithSDK(
 ): Promise<string> {
   const mint = new PublicKey(tokenMint);
   const buyer = wallet.keypair.publicKey;
-  const buyAmountSolBigInt = BigInt(Math.floor(buyAmountSol * 1e9));
+  const buyAmountSolBig = Big(buyAmountSol).mul('1000000000');
+  const buyAmountSolBigInt = BigInt(buyAmountSolBig.toString());
   const slippageBpsBigInt = BigInt(slippageBps);
 
   Logger.info(`[PUMPFUN BUY] Starting buy operation`, {
