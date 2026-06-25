@@ -1,23 +1,33 @@
-# Solana Trading Bot
+# Solana PumpFun Trading Bot
 
-A sophisticated Solana trading bot that implements a multi-wallet trading strategy with MEV protection.
+A practical Solana trading bot for PumpFun-style markets. It uses multiple wallets, watches for external buyers, and applies a Kelly-based stake sizing approach to keep buy sizes more disciplined.
 
-## Features
+## What it does
 
-- **Multi-Wallet Management**: Creates and funds 100 wallets from a central funding source
-- **Token Deployment**: Deploys a new token or uses an existing one
-- **Smart Trading Strategy**:
-  - Buys when no one else has bought
-  - Waits when someone else buys
-  - Sells after timeout if other buyer doesn't sell
-  - Restarts buying when other buyer leaves
-- **MEV Protection**: Tight slippage settings and non-bundled transactions
-- **PumpFun Integration**: Uses PumpFun DEX for token trading
+- Creates or loads multiple wallets
+- Funds wallets with SOL
+- Watches the token market for incoming buyers and sellers
+- Buys in a controlled sequence
+- Pauses when another buyer enters the market
+- Sells from the most recently purchased wallet when the market turns
+- Uses Kelly-criterion sizing with configurable max/min bounds
+
+## Main features
+
+- Multi-wallet trading flow
+- PumpFun SDK integration
+- Slippage protection
+- Wait-and-sell reaction logic
+- Kelly-based buy sizing
+- Simple logging for each trading step
 
 ## Requirements
 
 - Node.js 18+
-- Solana wallet with sufficient SOL for funding (100 wallets × 0.22 SOL = 22 SOL minimum)
+- npm
+- A funded Solana wallet
+- A working RPC endpoint
+- Enough SOL for funding test wallets
 
 ## Installation
 
@@ -27,86 +37,83 @@ npm install
 
 ## Configuration
 
-Copy `.env.example` to `.env` and configure:
+Create a `.env` file and configure values such as:
 
 ```env
 RPC_URL=https://api.mainnet-beta.solana.com
 FUNDING_WALLET_PRIVATE_KEY=your_base58_private_key
-TOKEN_MINT_ADDRESS=  # Leave empty to deploy new token on PumpFun
-SLIPPAGE_BPS=50  # 0.5% slippage
-BUY_AMOUNT_SOL=0.1
-SELL_AMOUNT_SOL=0.1
-WAIT_TIMEOUT_MS=20000  # 20 seconds
-NUM_WALLETS=100
+TOKEN_MINT_ADDRESS=your_token_mint_address
+SLIPPAGE_BPS=50
+BUY_AMOUNT_SOL=0.01
+WAIT_TIMEOUT_MS=20000
+NUM_WALLETS=10
+
+KELLY_BANKROLL_SOL=500
+KELLY_PROBABILITY=0.58
+KELLY_ALL_IN_PRICE=0.52
+KELLY_MAX_STAKE_SOL=25
+KELLY_MIN_STAKE_SOL=5
+KELLY_FRACTION=0.5
 ```
 
-**Important**: This bot is configured for **mainnet only**. Ensure you have sufficient SOL in your funding wallet (100 wallets × 0.22 SOL = 22 SOL minimum).
-
-## Usage
+## Running the bot
 
 ### Development
+
 ```bash
 npm run dev
 ```
 
-### Production
+### Production build
+
 ```bash
 npm run build
 npm start
 ```
 
-## Architecture
+## Trading flow
 
-```
+1. The bot loads or creates wallets.
+2. It funds the wallets with SOL.
+3. It checks for external market activity.
+4. If no one else has bought, it places a buy.
+5. If another buyer appears, it pauses and waits.
+6. If the buyer holds the market for too long, it starts selling from the most recently bought wallet.
+7. If the buyer exits quickly, it resumes buying.
+
+## Kelly sizing
+
+The bot now uses a Kelly-based stake calculation through the `stake-math` package. The buy amount is capped between a minimum and maximum stake and logged for transparency.
+
+## Project structure
+
+```text
 src/
-├── config/          # Configuration management
-├── wallet/          # Wallet creation and funding
-├── token/           # Token deployment (PumpFun)
-├── dex/             # DEX integration (PumpFun)
+├── config/          # Configuration values and env parsing
+├── engine/          # Buy/sell trading loop
 ├── monitor/         # Market monitoring
-├── engine/          # Trading engine logic
-├── utils/           # Utilities (logger)
+├── pumpfun/         # PumpFun SDK integration
+├── token/           # Token deployment helpers
+├── utils/           # Shared helpers such as Kelly sizing
+├── wallet/          # Wallet creation and funding
 └── types/           # TypeScript types
 ```
 
-## Trading Strategy
+## Documentation
 
-1. **Initial State**: All wallets are ready to buy
-2. **Buy Phase**: Continuously buy until someone else buys
-3. **Wait Phase**: When someone else buys, wait 20 seconds
-4. **Sell Phase**: If timeout reached, sell from last wallet that bought
-5. **Repeat**: Continue selling until other buyer leaves or wallets run out
-6. **Reset**: When other buyer leaves, restart buying phase
+Useful guides are included in the repository:
 
-## Important Notes
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [PUMPFUN_SETUP.md](PUMPFUN_SETUP.md)
+- [TEST_CASES.md](TEST_CASES.md)
+- [TESTING_GUIDE.md](TESTING_GUIDE.md)
 
-- **Never buys if someone else already bought** - Checks market state before each buy
-- **No transaction bundling** - Each transaction is sent individually
-- **Tight slippage** - Prevents MEV and frontrunning
-- **Sequential execution** - Small delays between transactions prevent bundling
+## Safety notes
 
-## PumpFun Setup
-
-1. Obtain PumpFun's official IDL (Interface Definition Language)
-2. Update the instruction builders in `PumpFunClient.ts` and `PumpFunTokenDeployer.ts`
-3. See `PUMPFUN_SETUP.md` for detailed instructions
-
-## Security
-
-- Keep your `.env` file secure and never commit it
-- Use a dedicated funding wallet with only the required amount
-- Monitor your bot's activity regularly
-- Consider using a custom RPC endpoint for better reliability
-- **This bot runs on mainnet** - use with caution and test thoroughly
-
-## WorkFlow
-
-- No external buyer → keep buying
-- External buyer detected → pause buying, enter wait mode
-- External buyer sells within 20s → resume buying
-- External buyer doesn't sell within 20s → start selling
-- While selling → keep selling until external buyer sells
-- External buyer sells → resume buying (if wallets still have tokens)
+- Use small amounts when testing.
+- Keep your private keys secure and never commit them.
+- Review slippage and Kelly settings before trading live.
+- This bot is a trading tool, not a guarantee of profit.
 
 ## License
 
