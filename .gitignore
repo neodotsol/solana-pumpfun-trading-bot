@@ -3,6 +3,5 @@ dist/
 .env
 *.log
 .DS_Store
-*.pem
 *.key
 wallets.json
