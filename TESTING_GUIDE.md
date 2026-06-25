@@ -1,403 +1,134 @@
-# Trading Bot Testing Guide
+# Testing guide
 
-This guide provides step-by-step instructions for testing the Solana Trading Bot.
+This guide is meant to be practical. If you are a developer, it helps you verify the code path. If you are a trader, it helps you understand what the bot should do in real market conditions.
 
-## Table of Contents
+## 1. Before you start
 
-1. [Prerequisites](#prerequisites)
-2. [Environment Setup](#environment-setup)
-3. [Pre-Testing Checklist](#pre-testing-checklist)
-4. [Manual Testing Procedures](#manual-testing-procedures)
-5. [Test Scenarios](#test-scenarios)
-6. [Monitoring & Verification](#monitoring--verification)
-7. [Troubleshooting](#troubleshooting)
-8. [Test Results Template](#test-results-template)
-
----
-
-## Prerequisites
-
-### Required Software
-- Node.js (v18+)
-- npm or yarn
+### Required software
+- Node.js 18 or newer
+- npm
 - Git
-- Solana CLI (optional, for wallet management)
 
-### Required Accounts
-- Solana wallet with sufficient SOL (for funding test wallets)
-- RPC endpoint access (devnet or mainnet)
-- Test token deployed (or use existing token)
+### Required setup
+- A valid Solana RPC endpoint
+- A funded wallet key
+- A token mint address
+- A small amount of SOL for testing
 
-### Required Knowledge
-- Basic understanding of Solana transactions
-- Understanding of bonding curves
-- Familiarity with command line
-
----
-
-## Environment Setup
-
-### Step 1: Clone and Install
+## 2. Install and build
 
 ```bash
-# Navigate to project directory
-cd "d:\WorkPlace\Solana Trading Bot"
-
-# Install dependencies
 npm install
-
-# Build the project
 npm run build
 ```
 
-### Step 2: Configure Environment Variables
+If the build fails, fix the issue before running the bot.
 
-Create or update `.env` file:
+## 3. Configure the environment
+
+Create a `.env` file with the values you need:
 
 ```env
-# Network Configuration
-RPC_URL=https://api.devnet.solana.com
-# OR for mainnet: RPC_URL=https://api.mainnet-beta.solana.com
-
-# Wallet Configuration
-FUNDING_WALLET_PRIVATE_KEY=your_funding_wallet_private_key_here
-NUM_WALLETS=10
-
-# Token Configuration
-TOKEN_MINT_ADDRESS=your_token_mint_address_here
-
-# Trading Parameters
-BUY_AMOUNT_SOL=0.1
+RPC_URL=https://api.mainnet-beta.solana.com
+FUNDING_WALLET_PRIVATE_KEY=your_private_key_here
+TOKEN_MINT_ADDRESS=your_token_mint_here
 SLIPPAGE_BPS=50
 WAIT_TIMEOUT_MS=20000
+NUM_WALLETS=10
 
-# Optional: Custom RPC (if using private RPC)
-# RPC_URL=https://your-custom-rpc-endpoint.com
+KELLY_BANKROLL_SOL=500
+KELLY_PROBABILITY=0.58
+KELLY_ALL_IN_PRICE=0.52
+KELLY_MAX_STAKE_SOL=25
+KELLY_MIN_STAKE_SOL=5
+KELLY_FRACTION=0.5
 ```
 
-### Step 3: Create Test Wallets
+## 4. Run the bot
 
 ```bash
-# Run wallet creation script (if available)
-# Or use the WalletManager to create wallets
 npm run dev
-# Then use wallet creation function in code
 ```
 
-**Manual Wallet Creation:**
-1. Use Solana CLI: `solana-keygen new -o wallets/wallet0.json`
-2. Or use the `createWallets()` function in `WalletManager.ts`
+You should see logs showing that the bot is connecting, loading wallets, and beginning the trading cycle.
 
-### Step 4: Fund Test Wallets
+## 5. Run the Kelly sizing test
 
-**Option A: Using WalletManager**
-```typescript
-import { fundWallets, loadWallets } from './src/wallet/WalletManager';
-import { connection, fundingWalletPrivateKey, fundingAmountSol } from './src/config';
+A simple regression test for the Kelly helper is included:
 
-const wallets = loadWallets();
-await fundWallets(connection, fundingWalletPrivateKey, wallets, fundingAmountSol);
-```
-
-**Option B: Manual Funding**
 ```bash
-# Fund each wallet manually
-solana transfer <wallet-address> 0.22 --url devnet
+npx tsx --test src/__tests__/kellyStake.test.ts
 ```
 
-**Required Balance per Wallet:**
-- Minimum: `buyAmountSol + transaction fees` (≈ 0.11 SOL)
-- Recommended: 0.22 SOL per wallet
-- For 10 wallets: ~2.2 SOL total needed
+This confirms that the stake size follows the expected cap and floor behavior.
 
----
+## 6. Manual test flow
 
-## Pre-Testing Checklist
+### Test 1: Basic buy cycle
+1. Start the bot.
+2. Watch the logs.
+3. Confirm that one wallet buys and the buy queue progresses.
 
-Before starting tests, verify:
+Expected result:
+- The bot submits a buy.
+- The wallet is moved to the sell queue.
+- The logs show the buy completed successfully.
 
-- [ ] Environment variables configured correctly
-- [ ] `.env` file exists and has correct values
-- [ ] RPC endpoint is accessible
-- [ ] Test wallets created (check `wallets.json`)
-- [ ] All wallets funded with sufficient SOL
-- [ ] Token mint address is correct
-- [ ] Token exists and bonding curve is initialized
-- [ ] Funding wallet has enough SOL
-- [ ] Project builds without errors (`npm run build`)
-- [ ] No syntax errors in code
+### Test 2: Market pause
+1. Start the bot.
+2. Buy the same token from another wallet while the bot is active.
+3. Watch for the bot to pause buying.
 
-**Quick Verification:**
-```bash
-# Check wallet file exists
-ls wallets.json
+Expected result:
+- The bot stops buying temporarily.
+- The waiting state is logged.
 
-# Check environment variables
-node -e "require('dotenv').config(); console.log(process.env.TOKEN_MINT_ADDRESS)"
+### Test 3: Sell after waiting
+1. Leave the external buyer in place longer than the wait timeout.
+2. Check the logs.
 
-# Test RPC connection
-node -e "const { Connection } = require('@solana/web3.js'); const conn = new Connection(process.env.RPC_URL); conn.getVersion().then(v => console.log('RPC OK:', v))"
-```
+Expected result:
+- The bot begins selling from the last wallet that bought first.
 
----
+### Test 4: Resume after buyer exits
+1. Let the external buyer sell quickly.
+2. Watch the bot resume the cycle.
 
-## Manual Testing Procedures
+Expected result:
+- The bot exits waiting mode and starts buying again.
 
-### Test 1: Basic Sequential Buying
+## 7. What to watch in the logs
 
-**Objective:** Verify all wallets buy tokens sequentially
+Useful signals:
+- Kelly stake calculated
+- buy completed
+- external buyer detected
+- wait timeout reached
+- sell completed
+- resetting trading state
 
-**Steps:**
-1. Start the bot:
-   ```bash
-   npm run dev
-   ```
+## 8. Troubleshooting
 
-2. Monitor console output:
-   ```
-   Starting trading engine...
-   Executing buy with wallet 0 (AbCdEfGh...)
-   Buy executed successfully. Signature: <tx-signature>
-   Executing buy with wallet 1 (XyZaBcDe...)
-   Buy executed successfully. Signature: <tx-signature>
-   ...
-   ```
+### The bot does not start
+- Check the `.env` variables.
+- Make sure the RPC endpoint is reachable.
+- Re-run the build.
 
-3. Verify on Solana Explorer:
-   - Go to: `https://solscan.io/` (or `https://explorer.solana.com/`)
-   - Search for transaction signatures
-   - Verify each wallet bought tokens
-   - Check token balances
+### The bot buys too aggressively
+- Lower the Kelly max stake.
+- Lower the bankroll or adjust the probability assumptions.
 
-**Expected Results:**
-- ✅ All 10 wallets execute buy transactions
-- ✅ Each buy has ~500ms delay between them
-- ✅ buyQueue shrinks: [0-9] → []
-- ✅ sellQueue grows: [] → [0-9]
-- ✅ All transactions confirm successfully
+### The bot does not sell
+- Confirm the wallet actually holds tokens.
+- Check whether the wait timeout is too long or too short for your setup.
+- Review the logs for state transitions.
 
-**Verification Commands:**
-```bash
-# Check transaction count (should see 10 buy transactions)
-# Monitor logs for: "Buy executed successfully" (10 times)
-```
+## 9. Good practice for traders
 
----
-
-### Test 2: External Buyer Detection
-
-**Objective:** Verify bot pauses when external buyer buys
-
-**Prerequisites:**
-- Bot is running and buying tokens
-- Have another wallet ready to buy manually
-
-**Steps:**
-1. Start bot and let it buy with first few wallets
-2. **While bot is buying**, use another wallet to buy the token manually:
-   ```bash
-   # Use Solana CLI or another tool to buy token
-   # Or use Phantom/Solflare wallet
-   ```
-
-3. Monitor bot logs:
-   ```
-   External buyer detected! Pausing buying and entering wait mode...
-   Waiting for external buyer to sell... <remaining-time>ms remaining
-   ```
-
-4. Verify state:
-   - Bot should stop buying
-   - `isWaiting` should be `true`
-   - buyQueue should be preserved
-
-**Expected Results:**
-- ✅ Bot detects external buyer immediately
-- ✅ Bot enters waiting mode
-- ✅ No more buy attempts while waiting
-- ✅ buyQueue preserved (not cleared)
-
-**Verification:**
-- Check logs for "External buyer detected"
-- Verify no new buy transactions from bot wallets
-- Check `isWaiting` state in logs
-
----
-
-### Test 3: Wait Timeout
-
-**Objective:** Verify bot starts selling after timeout
-
-**Prerequisites:**
-- Bot is in waiting mode (from Test 2)
-- External buyer does NOT sell
-
-**Steps:**
-1. Ensure bot is waiting (from Test 2)
-2. **Do NOT sell** the external buyer's tokens
-3. Wait 20+ seconds (waitTimeoutMs)
-4. Monitor logs:
-   ```
-   Timeout reached. External buyer did not sell. Starting to sell...
-   Executing sell with wallet 9 (last wallet)...
-   Sell executed successfully. Signature: <tx-signature>
-   ```
-
-**Expected Results:**
-- ✅ After 20 seconds, bot starts selling
-- ✅ Sells in LIFO order (last wallet first)
-- ✅ `isWaiting` becomes `false`
-- ✅ Selling proceeds normally
-
-**Verification:**
-- Check timestamp: wait time ≥ 20000ms
-- Verify sell transactions start
-- Check sell order is LIFO (9 → 8 → 7...)
-
----
-
-### Test 4: External Buyer Sells Early
-
-**Objective:** Verify bot resumes buying when external buyer sells
-
-**Prerequisites:**
-- Bot is in waiting mode
-- External buyer has tokens
-
-**Steps:**
-1. Bot is waiting (from Test 2)
-2. **Sell** external buyer's tokens (within 20 seconds)
-3. Monitor logs:
-   ```
-   External buyer sold within timeout! Resuming buying...
-   Resetting trading state...
-   Executing buy with wallet X...
-   ```
-
-**Expected Results:**
-- ✅ Bot detects external buyer sold
-- ✅ Bot immediately resumes buying
-- ✅ Wallets that sold are back in buyQueue
-- ✅ No timeout occurs
-
-**Verification:**
-- Check logs for "External buyer sold within timeout"
-- Verify buy transactions resume
-- Check buyQueue is repopulated
-
----
-
-### Test 5: LIFO Selling Order
-
-**Objective:** Verify selling happens in Last-In-First-Out order
-
-**Prerequisites:**
-- Multiple wallets have bought tokens
-- Bot is selling (from timeout or manual trigger)
-
-**Steps:**
-1. Ensure 3+ wallets have bought: wallets 0, 1, 2
-2. sellQueue = [0, 1, 2] (wallet 2 bought last)
-3. Trigger selling (timeout or external buyer)
-4. Monitor sell order:
-   ```
-   Executing sell with wallet 2 (last bought)...
-   Executing sell with wallet 1...
-   Executing sell with wallet 0...
-   ```
-
-**Expected Results:**
-- ✅ Wallet 2 sells first (last bought)
-- ✅ Wallet 1 sells second
-- ✅ Wallet 0 sells last
-- ✅ Order: 2 → 1 → 0
-
-**Verification:**
-- Check transaction timestamps
-- Verify sell order matches buy order (reversed)
-
----
-
-### Test 6: Error Recovery
-
-**Objective:** Verify bot handles errors gracefully
-
-**Test 6A: Buy Failure**
-1. Create scenario where buy fails:
-   - Insufficient balance
-   - Network error
-   - Invalid token mint
-2. Monitor logs:
-   ```
-   Error executing buy with wallet X: <error>
-   ```
-3. Verify:
-   - Error is logged
-   - Wallet is added back to buyQueue
-   - Bot continues with next wallet
-
-**Test 6B: Sell Failure**
-1. Create scenario where sell fails:
-   - No tokens to sell
-   - Network error
-2. Monitor logs:
-   ```
-   Error executing sell with wallet X: <error>
-   ```
-3. Verify:
-   - Error is logged
-   - Wallet is added back to sellQueue
-   - Bot continues with next wallet
-
-**Expected Results:**
-- ✅ Errors are caught and logged
-- ✅ Bot continues operation
-- ✅ Failed wallets are retried
-- ✅ No state corruption
-
----
-
-### Test 7: Complete Reset Cycle
-
-**Objective:** Verify complete reset after all wallets sell
-
-**Steps:**
-1. All wallets buy tokens
-2. All wallets sell tokens
-3. No external buyer present
-4. Monitor logs:
-   ```
-   All wallets sold. Resetting completely.
-   Resetting trading state...
-   Executing buy with wallet 0...
-   ```
-
-**Expected Results:**
-- ✅ resetTradingState is called
-- ✅ All wallets added back to buyQueue
-- ✅ Bot starts buying again
-- ✅ Complete cycle repeats
-
-**Verification:**
-- Check buyQueue is repopulated with all wallets
-- Verify buy transactions start again
-- Check walletActions are reset appropriately
-
----
-
-## Test Scenarios
-
-### Scenario A: Happy Path (Full Cycle)
-```
-1. Start bot → 10 wallets buy sequentially
-2. External buyer buys → Bot waits
-3. External buyer sells (within timeout) → Bot resumes
-4. All wallets sell → Bot resets
-5. Repeat cycle
-```
-
-**Duration:** ~5-10 minutes  
-**Success Criteria:** All steps complete without errors
+- Start with low risk.
+- Test on a small scale before increasing size.
+- Keep an eye on slippage and wallet balances.
+- Treat the bot as a tool, not as a guarantee of profit.
 
 ---
 
