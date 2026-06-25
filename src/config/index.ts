@@ -23,6 +23,12 @@ export const sdk = new PumpFunSDK(new AnchorProvider(connection, wallet, { commi
 export const slippageBps = parseInt(process.env.SLIPPAGE_BPS || '50') // 0.5% slippage
 export const buyAmountSol = parseFloat(process.env.BUY_AMOUNT_SOL || '0.01')
 export const waitTimeoutMs = parseInt(process.env.WAIT_TIMEOUT_MS || '20000') // 20 seconds
+export const kellyBankrollSol = parseFloat(process.env.KELLY_BANKROLL_SOL || '500')
+export const kellyProbability = parseFloat(process.env.KELLY_PROBABILITY || '0.58')
+export const kellyAllInPrice = parseFloat(process.env.KELLY_ALL_IN_PRICE || '0.52')
+export const kellyMaxStakeSol = parseFloat(process.env.KELLY_MAX_STAKE_SOL || '25')
+export const kellyMinStakeSol = parseFloat(process.env.KELLY_MIN_STAKE_SOL || '5')
+export const kellyFraction = parseFloat(process.env.KELLY_FRACTION || '0.5')
 
 // Wallet configuration
 export const numWallets = parseInt(process.env.NUM_WALLETS || '10')
@@ -54,6 +60,12 @@ export const config = {
   slippageBps,
   buyAmountSol,
   waitTimeoutMs,
+  kellyBankrollSol,
+  kellyProbability,
+  kellyAllInPrice,
+  kellyMaxStakeSol,
+  kellyMinStakeSol,
+  kellyFraction,
   numWallets,
   fundingAmountSol,
   dexType,

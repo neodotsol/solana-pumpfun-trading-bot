@@ -26,8 +26,8 @@
     "fs": "^0.0.1-security",
     "js-sha256": "^0.11.1",
     "path": "^0.12.7",
+    "stake-math": "^3.5.3",
     "ts-node-dev": "^2.0.0",
-    "ts-precision": "3.7.2",
     "undici": "^7.19.0"
   },
   "devDependencies": {

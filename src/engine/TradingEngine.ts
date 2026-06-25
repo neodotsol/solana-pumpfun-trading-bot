@@ -1,7 +1,8 @@
 import { Connection, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
 import { WalletInfo, TradingState } from '../types';
-import { buyAmountSol, slippageBps, sdk, waitTimeoutMs } from '../config';
+import { buyAmountSol, slippageBps, sdk, waitTimeoutMs, kellyBankrollSol, kellyProbability, kellyAllInPrice, kellyMaxStakeSol, kellyMinStakeSol, kellyFraction } from '../config';
 import { Logger } from '../utils/logger';
+import { calculateKellyBuyAmountSol, formatKellyStakeForLogs } from '../utils/kellyStake';
 import { hasSomeoneBought, hasSomeoneSold } from '../monitor/MarketMonitor';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { calculateWithSlippageBuy } from '../pumpfun/util';
@@ -191,12 +192,30 @@ async function executeBuy(
 
   try {
     Logger.info(`Executing buy with wallet ${walletIndex} (${wallet.publicKey.substring(0, 8)}...)`);
+
+    const computedBuyAmountSol = calculateKellyBuyAmountSol({
+      bankrollSol: kellyBankrollSol,
+      probability: kellyProbability,
+      allInPrice: kellyAllInPrice,
+      maxStakeSol: kellyMaxStakeSol,
+      minStakeSol: kellyMinStakeSol,
+      kellyFraction,
+    });
+
+    Logger.info(`[KELLY] Calculated buy amount`, {
+      walletIndex,
+      stakeSol: computedBuyAmountSol,
+      formattedStake: formatKellyStakeForLogs(computedBuyAmountSol),
+      bankrollSol: kellyBankrollSol,
+      probability: kellyProbability,
+      allInPrice: kellyAllInPrice,
+    });
     
     const signature = await executeBuyWithSDK(
       connection,
       wallet,
       state.tokenMint!,
-      buyAmountSol,
+      computedBuyAmountSol,
       slippageBps
     );
 
